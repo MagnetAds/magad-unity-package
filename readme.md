@@ -1,8 +1,10 @@
 # MagnetAd SDK for Unity — Publisher Guide
 
-This is a step-by-step guide for installing and using the **MagnetAd** package in Unity projects, to show **full-screen (Interstitial)** ads on **Android**.
+This is a step-by-step guide for installing and using the **MagnetAd** package in Unity projects, to show **full-screen (Interstitial)** ads on **Android** — either plain or **rewarded video**.
 
 The pattern is the same as other well known SDKs (AdMob / AppLovin): call `Initialize` once, then create one `InterstitialAd` object per placement, call `RequestAd`, and call `Show` when the ad is ready.
+
+> You choose whether a placement is plain or rewarded when you create it in the publisher panel. Whether a given ad arrives as an image or a video is decided per request, and your integration code is the same for both.
 
 ---
 
@@ -16,17 +18,18 @@ The pattern is the same as other well known SDKs (AdMob / AppLovin): call `Initi
 6. [Step 4 — Get your ids](#step-4--get-your-ids)
 7. [Step 5 — Write the integration code](#step-5--write-the-integration-code)
 8. [Step 6 — Ad lifecycle and events](#step-6--ad-lifecycle-and-events)
-9. [Testing on a device](#testing-on-a-device)
-10. [Full API reference](#full-api-reference)
-11. [Error codes](#error-codes)
-12. [Troubleshooting](#troubleshooting)
-13. [Limits](#limits)
+9. [Step 7 — Video ads, sound and rewards](#step-7--video-ads-sound-and-rewards)
+10. [Testing on a device](#testing-on-a-device)
+11. [Full API reference](#full-api-reference)
+12. [Error codes](#error-codes)
+13. [Troubleshooting](#troubleshooting)
+14. [Limits](#limits)
 
 ---
 
 ## 1. Overview
 
-- Ad type: **full-screen (Interstitial)**.
+- Ad type: **full-screen (Interstitial)**, image or video. A rewarded video pays out once the user watches it through ([Step 7](#step-7--video-ads-sound-and-rewards)).
 - Platform: **Android** only.
 - A few standard Gradle dependencies must be added to your build ([Step 2](#step-2--gradle-dependencies)).
 - No dangerous permissions and no permission dialog for the user. The `INTERNET` permission and the other required settings are merged into your app manifest automatically — **you do not need to edit the manifest by hand.**
@@ -80,10 +83,10 @@ In Unity:
 and enter this address:
 
 ```
-https://github.com/MagnetAds/magad-unity-package.git#v1.0.0
+https://github.com/MagnetAds/magad-unity-package.git#v1.1.0
 ```
 
-> - The tag at the end of the address (`#v1.0.0`) locks your project to this version. To move to the next version, just change the tag number.
+> - The tag at the end of the address (`#v1.1.0`) locks your project to this version. To move to the next version, just change the tag number.
 > - Requirement: **Git** must be installed on your machine and you need network access to GitHub.
 
 ### Method B) Install from a .unitypackage file or by copying the folder
@@ -158,6 +161,8 @@ You get two ids from the MagnetAd publisher panel:
 - **App Id** (your property id) — used in the `MagnetAd.Initialize` method.
 - **Placement Id** (the ad placement id) — used in the `InterstitialAd` constructor.
 
+Each placement is created in the panel as either plain or rewarded, so you already know which kind the id in your code refers to. Use a rewarded placement only where you actually hand out a prize.
+
 > These ids are sent as strings and the server is what validates them.
 
 ---
@@ -195,6 +200,7 @@ public class AdsManager : MonoBehaviour
             _interstitial.OnAdFailedToLoad += err => Debug.LogWarning($"Load failed: {err.Code}");
             _interstitial.OnAdShown        += () => Time.timeScale = 0f;
             _interstitial.OnAdClicked      += () => Debug.Log("Ad clicked");
+            _interstitial.OnRewarded       += () => GrantCoins(50);   // rewarded placements only
             _interstitial.OnAdDismissed    += () =>
             {
                 Time.timeScale = 1f;
@@ -265,9 +271,10 @@ Show()
         ├─►  OnAdShown                       (the ad is on screen)
         │         ├─►  OnAdClicked  ─────►  OnAdDismissed
         │         │                          (the click opens the market/browser and closes the ad)
+        │         ├─►  OnRewarded            (rewarded video only: watched through)
         │         └─►  OnAdDismissed         (the user closed the ad with the ✕ button)
         │
-        └─►  OnAdFailedToShow(err)           (AD_NOT_READY / AD_EXPIRED / ASSET_LOAD_FAILED / …)
+        └─►  OnAdFailedToShow(err)           (AD_NOT_READY / AD_EXPIRED / VIDEO_TIMEOUT / …)
 ```
 
 | Event | Type | Description |
@@ -280,12 +287,66 @@ Show()
 | `OnAdClicked` | `Action` | The user tapped the ad image (once per ad). `OnAdDismissed` follows right after it. |
 | `OnAdDismissed` | `Action` | The ad closed (with the ✕ button or after a click). |
 | `OnAdFailedToShow` | `Action<AdError>` | The ad could not be shown (not ready, expired, the image did not render, and so on). |
+| `OnRewarded` | `Action` | Rewarded video only: the user watched the video through. Never raised for an image ad. See [Step 7](#step-7--video-ads-sound-and-rewards). |
 
 > While the ad is on screen, the close button (✕) first shows a **countdown of a few seconds** and then becomes active. The hardware Back button is disabled during the ad.
 
 > **Two important points about the order of events:**
 > - **A click closes the ad.** `OnAdDismissed` always comes after `OnAdClicked`, so if you pause the game in `OnAdShown`, resuming it in `OnAdDismissed` works for both paths (closing by hand and clicking).
 > - **If the ad image does not render after it opens**, the ad closes and only `OnAdFailedToShow` with the code `ASSET_LOAD_FAILED` is raised — `OnAdDismissed` does not come in this case. So if you paused the game, make sure you also resume it in `OnAdFailedToShow` (the sample code does this).
+
+---
+
+## Step 7 — Video ads, sound and rewards
+
+An ad may arrive as an image or as a video. Your code is the same for both — the same `RequestAd` and the same `Show`. Only two things differ: **sound** and **rewards**.
+
+### 7-1) Video sound
+
+Most games have their own sound setting, and a video ad that ignores it is a bad surprise. Two properties on `MagnetAd` handle this:
+
+```csharp
+MagnetAd.VideoVolume = 0.5f;   // 0f (silent) to 1f (loudest), default 1f
+MagnetAd.VideoMuted  = true;   // silence without losing the VideoVolume value
+```
+
+- Set either **before** `Initialize` so the first video already starts at the right level, or **any time after** — including while a video ad is on screen; the change applies immediately.
+- `VideoMuted` does not clear `VideoVolume`. Setting it back to `false` restores the same level, which makes it the right choice for a mute button.
+- Values outside `0f..1f` are clamped.
+
+### 7-2) Telling a rewarded placement apart
+
+You picked the type when you created the placement, so the simplest approach is to write your code around what you already know: attach a reward handler on a rewarded placement, and skip it on a plain one.
+
+If you also want to confirm it at runtime, `PlacementType` tells you after `OnAdLoaded`:
+
+```csharp
+_interstitial.OnAdLoaded += () =>
+{
+    if (_interstitial.PlacementType == PlacementType.REWARDED)
+        ShowRewardPromiseDialog();   // "watch this through and get 50 coins"
+};
+```
+
+`PlacementType` is `UNKNOWN` until an ad is loaded, and `INTERSTITIAL` or `REWARDED` after that.
+
+### 7-3) Receiving the reward
+
+When the user watches the video **through**, `OnRewarded` is raised on that ad object:
+
+```csharp
+_interstitial.OnRewarded += () => GrantCoins(50);
+```
+
+> Subscribe to it **with the rest of the events, before `RequestAd`**. If no handler is attached at that moment the reward is lost — the SDK does not hold it for later.
+
+> The reward is announced the moment the view finishes and does not wait for the server, so a dropped connection cannot cost the user their prize. If granting the reward matters to you commercially, record it on your own server as well.
+
+### 7-4) Video playback notes
+
+- A rewarded video usually cannot be closed before it ends, so the user cannot bail out early and still ask for the prize.
+- Screen brightness during playback follows the device's system brightness.
+- If playback stalls and nothing comes back, the SDK closes the ad itself and raises `OnAdFailedToShow` with the code `VIDEO_TIMEOUT`, so your game is never left waiting.
 
 ---
 
@@ -308,6 +369,7 @@ namespace MagnetAdSDK
     public static class MagnetAd
     {
         public const string Version;                       // package version
+        public const long DefaultInitTimeoutMs;            // 30000
         public static bool IsInitialized();
         public static string GetSDKVersion();              // "unsupported" in the Editor
         public static event Action<bool> OnInitializationComplete;
@@ -315,6 +377,11 @@ namespace MagnetAdSDK
         public static void Initialize(string appId, Action<bool> onComplete = null);
         public static void Initialize(string appId, bool debugMode,
                                       Action<bool> onComplete = null);
+        public static void Initialize(string appId, bool debugMode, long timeoutMs,
+                                      Action<bool> onComplete = null);
+
+        public static float VideoVolume { get; set; }      // 0f..1f, default 1f
+        public static bool VideoMuted { get; set; }
 
         public static void ClearCache();                   // clears the cached ads and images
         public static void Shutdown();                     // called automatically when the app quits
@@ -322,8 +389,12 @@ namespace MagnetAdSDK
 
     public sealed class InterstitialAd : IDisposable
     {
+        public const long DefaultRequestTimeoutMs;         // 30000
+
         public InterstitialAd(string placementId);         // never throws
         public string PlacementId { get; }
+        public PlacementType PlacementType { get; }        // UNKNOWN until an ad is loaded
+        public AdState State { get; }                      // IDLE / LOADING / LOADED / SHOWING / DESTROYED
         public bool IsLoaded { get; }                      // an ad is ready to show
         public bool IsLoading { get; }                     // a request is in progress
 
@@ -334,10 +405,12 @@ namespace MagnetAdSDK
         public event Action OnAdClicked;
         public event Action OnAdDismissed;
         public event Action<AdError> OnAdFailedToShow;
+        public event Action OnRewarded;                    // rewarded video only
 
-        public void RequestAd();   // requests and preloads an ad
-        public void Show();        // shows the loaded ad
-        public void Destroy();     // releases the ad; safe to call more than once
+        public void RequestAd();                  // requests and preloads an ad
+        public void RequestAd(long timeoutMs);    // same, with your own timeout
+        public void Show();                       // shows the loaded ad
+        public void Destroy();                    // releases the ad; safe to call more than once
     }
 
     public sealed class AdError
@@ -345,6 +418,10 @@ namespace MagnetAdSDK
         public string Code { get; }      // one of the AdErrorCode values
         public string Message { get; }
     }
+
+    public enum AdState { IDLE, LOADING, LOADED, SHOWING, DESTROYED }
+
+    public enum PlacementType { UNKNOWN, INTERSTITIAL, REWARDED }
 
     public static class AdErrorCode { /* the constants listed below */ }
 }
@@ -356,6 +433,9 @@ namespace MagnetAdSDK
 | `RequestAd()` | Non-blocking. The result always comes through `OnAdLoaded` or `OnAdFailedToLoad`. If a request is already running, a second call is ignored (no second request goes to the server) and a warning is printed in the Console. |
 | `Show()` | Shows the preloaded ad. If no ad is ready, `OnAdFailedToShow(AD_NOT_READY)` is raised. |
 | `Destroy()` | Releases the ad resources. The instance cannot be used after that. If an ad is on screen when you call it, `OnAdDismissed` is also raised so a paused game always comes back. |
+| `MagnetAd.VideoVolume` | Video-ad volume, `0f` to `1f` (default `1f`). Settable before `Initialize` or at any time after, including mid-playback. Values outside the range are clamped. |
+| `MagnetAd.VideoMuted` | Silences video ads without clearing `VideoVolume`, so unmuting returns to the same level. |
+| `PlacementType` | The kind of the loaded ad. `UNKNOWN` before `OnAdLoaded`. See [Step 7](#step-7--video-ads-sound-and-rewards). |
 
 > **About `IsLoaded`:** an expired ad reports `false` quickly, so this value does not go stale. Every successful show uses up the ad and `IsLoaded` becomes `false` again; you must call `RequestAd()` for the next one. Read this property from the main thread only.
 
@@ -380,6 +460,10 @@ Always compare `AdError.Code` against the constants in the `AdErrorCode` class, 
 | `AdErrorCode.ACTIVITY_UNAVAILABLE` | The app screen was not available and the ad could not be shown. |
 | `AdErrorCode.SHOW_FAILED` | An unknown error while showing the ad. |
 | `AdErrorCode.TIMEOUT` | Getting the ad took too long. |
+| `AdErrorCode.UNEXPECTED_AD_TYPE` | The server sent an ad kind this version of the SDK does not know. |
+| `AdErrorCode.VIDEO_PLAYBACK_ERROR` | Video playback stopped with an error. |
+| `AdErrorCode.VIDEO_SERVER_DIED` | The operating system's video player died (usually a device-side problem). |
+| `AdErrorCode.VIDEO_TIMEOUT` | The video never started, or stalled and stopped responding; the SDK closed the ad. |
 | `AdErrorCode.UNKNOWN` | Any other error. |
 
 ---
@@ -408,9 +492,10 @@ For easier debugging, Unity-side messages are prefixed with `[MagnetAd]` and can
 ## Limits
 
 - **Android builds only** (iOS and the Unity Editor are not supported; in the Editor and on other platforms every call returns with a warning, does nothing, and fails).
-- **Interstitial** ads only.
-- No Banner/Native/Rewarded in this version.
+- **Interstitial** ads only (plain and rewarded video).
+- No Banner or Native in this version.
+- Your code cannot decide whether an ad arrives as an image or as a video.
 
 ---
 
-*Package version: `1.0.0` — readable at runtime from the `MagnetAd.Version` constant.*
+*Package version: `1.1.0` — readable at runtime from the `MagnetAd.Version` constant.*

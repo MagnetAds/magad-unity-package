@@ -2,9 +2,11 @@
 
 # راهنمای استفاده از MagnetAd SDK در یونیتی (ویژه ناشران)
 
-این سند راهنمای گام‌به‌گام نصب و استفاده از پکیج تبلیغاتی **MagnetAd** در پروژه‌های Unity است؛ برای نمایش آگهی **تمام‌صفحه (Interstitial)** روی **اندروید**.
+این سند راهنمای گام‌به‌گام نصب و استفاده از پکیج تبلیغاتی **MagnetAd** در پروژه‌های Unity است؛ برای نمایش آگهی **تمام‌صفحه (Interstitial)** روی **اندروید**، چه از نوع **تصویری** و چه از نوع **ویدیویی جایزه‌دار (Rewarded)**.
 
 الگوی استفاده مانند SDKهای شناخته‌شده (AdMob / AppLovin) است: یک بار `Initialize`، سپس به‌ازای هر جایگاه یک آبجکت `InterstitialAd` بسازید، `RequestAd` کنید و وقتی آماده شد `Show` بزنید.
+
+> جایزه‌دار بودن یا نبودن هر جایگاه را خودتان در پنل ناشر مشخص می‌کنید. اما اینکه محتوای هر آگهی تصویر باشد یا ویدیو، از قبل معلوم نیست و کد یکپارچه‌سازی برای هر دو یکی است.
 
 ---
 
@@ -18,17 +20,18 @@
 6. [گام ۴ — دریافت شناسه‌ها](#گام-۴--دریافت-شناسهها)
 7. [گام ۵ — نوشتن کد یکپارچه‌سازی](#گام-۵--نوشتن-کد-یکپارچهسازی)
 8. [گام ۶ — چرخهٔ عمر آگهی و رویدادها](#گام-۶--چرخهٔ-عمر-آگهی-و-رویدادها)
-9. [آزمایش روی دستگاه](#آزمایش-روی-دستگاه)
-10. [مرجع کامل API](#مرجع-کامل-api)
-11. [کدهای خطا](#کدهای-خطا)
-12. [عیب‌یابی مشکلات رایج](#عیبیابی-مشکلات-رایج)
-13. [محدودیت‌ها](#محدودیتها)
+9. [گام ۷ — آگهی ویدیویی، صدا و جایزه](#گام-۷--آگهی-ویدیویی-صدا-و-جایزه)
+10. [آزمایش روی دستگاه](#آزمایش-روی-دستگاه)
+11. [مرجع کامل API](#مرجع-کامل-api)
+12. [کدهای خطا](#کدهای-خطا)
+13. [عیب‌یابی مشکلات رایج](#عیبیابی-مشکلات-رایج)
+14. [محدودیت‌ها](#محدودیتها)
 
 ---
 
 ## ۱. معرفی کوتاه
 
-- نوع آگهی: **تمام‌صفحه (Interstitial)**.
+- نوع آگهی: **تمام‌صفحه (Interstitial)**، تصویری یا ویدیویی. ویدیوهای جایزه‌دار در صورت تماشای کامل، **جایزه (Reward)** می‌دهند ([گام ۷](#گام-۷--آگهی-ویدیویی-صدا-و-جایزه)).
 - پلتفرم: فقط **اندروید**.
 - چند وابستگی استاندارد Gradle باید به بیلد شما اضافه شود ([گام ۲](#گام-۲--وابستگیهای-gradle)).
 - بدون هیچ مجوز خطرناک و بدون دیالوگ درخواست دسترسی از کاربر. مجوز `INTERNET` و سایر تنظیمات لازم به‌صورت خودکار در مانیفست برنامهٔ شما ادغام (merge) می‌شوند — **نیازی به ویرایش دستی مانیفست نیست.**
@@ -96,12 +99,12 @@
 <div dir="ltr">
 
 ```
-https://github.com/MagnetAds/magad-unity-package.git#v1.0.0
+https://github.com/MagnetAds/magad-unity-package.git#v1.1.0
 ```
 
 </div>
 
-> - تگ انتهای آدرس (`#v1.0.0`) پروژهٔ شما را روی همین نسخه قفل می‌کند. برای به‌روزرسانی به نسخهٔ بعدی، فقط شمارهٔ تگ را تغییر دهید.
+> - تگ انتهای آدرس (`#v1.1.0`) پروژهٔ شما را روی همین نسخه قفل می‌کند. برای به‌روزرسانی به نسخهٔ بعدی، فقط شمارهٔ تگ را تغییر دهید.
 > - پیش‌نیاز: روی سیستم شما باید **Git** نصب باشد و به گیت‌هاب دسترسی شبکه‌ای داشته باشید.
 
 ### روش ب) نصب از فایل .unitypackage یا کپی پوشه
@@ -184,6 +187,8 @@ dependencies {
 - ‏**App Id** (شناسهٔ Property شما) — در متد `MagnetAd.Initialize` استفاده می‌شود.
 - ‏**Placement Id** (شناسهٔ جایگاه آگهی) — در سازندهٔ `InterstitialAd` استفاده می‌شود.
 
+هر جایگاه را هنگام ساختن در پنل، معمولی یا جایزه‌دار تعریف می‌کنید، پس از قبل می‌دانید شناسه‌ای که در کد گذاشته‌اید از کدام نوع است. جایگاه جایزه‌دار را فقط جایی بگذارید که واقعاً به کاربر جایزه می‌دهید.
+
 > این شناسه‌ها به‌صورت رشته (string) ارسال می‌شوند و اعتبارسنجی آن‌ها بر عهدهٔ سرور است.
 
 ---
@@ -223,6 +228,7 @@ public class AdsManager : MonoBehaviour
             _interstitial.OnAdFailedToLoad += err => Debug.LogWarning($"Load failed: {err.Code}");
             _interstitial.OnAdShown        += () => Time.timeScale = 0f;
             _interstitial.OnAdClicked      += () => Debug.Log("Ad clicked");
+            _interstitial.OnRewarded       += () => GrantCoins(50);   // فقط جایگاه جایزه‌دار
             _interstitial.OnAdDismissed    += () =>
             {
                 Time.timeScale = 1f;
@@ -297,9 +303,10 @@ Show()
         ├─►  OnAdShown                       (آگهی روی صفحه آمد)
         │         ├─►  OnAdClicked  ─────►  OnAdDismissed
         │         │                          (کلیک، مارکت/مرورگر را باز و آگهی را می‌بندد)
+        │         ├─►  OnRewarded            (فقط ویدیوی جایزه‌دار: تماشای کامل ویدیو)
         │         └─►  OnAdDismissed         (کاربر با دکمهٔ ✕ آگهی را بست)
         │
-        └─►  OnAdFailedToShow(err)           (AD_NOT_READY / AD_EXPIRED / ASSET_LOAD_FAILED / …)
+        └─►  OnAdFailedToShow(err)           (AD_NOT_READY / AD_EXPIRED / VIDEO_TIMEOUT / …)
 ```
 
 </div>
@@ -314,12 +321,78 @@ Show()
 | <span dir="ltr">`OnAdClicked`</span> | <span dir="ltr">`Action`</span> | <span dir="rtl">کاربر روی تصویر آگهی زد (هر آگهی یک بار). بلافاصله پس از آن `OnAdDismissed` هم صادر می‌شود.</span> |
 | <span dir="ltr">`OnAdDismissed`</span> | <span dir="ltr">`Action`</span> | <span dir="rtl">آگهی بسته شد (با دکمهٔ ✕ یا در پی یک کلیک).</span> |
 | <span dir="ltr">`OnAdFailedToShow`</span> | <span dir="ltr">`Action<AdError>`</span> | <span dir="rtl">نمایش ممکن نشد (آماده نبود، منقضی شده، تصویر رندر نشد و …).</span> |
+| <span dir="ltr">`OnRewarded`</span> | <span dir="ltr">`Action`</span> | <span dir="rtl">فقط برای ویدیوی جایزه‌دار: کاربر ویدیو را کامل دید. برای آگهی تصویری هیچ‌وقت صادر نمی‌شود. جزئیات در [گام ۷](#گام-۷--آگهی-ویدیویی-صدا-و-جایزه).</span> |
 
 > هنگام نمایش آگهی، دکمهٔ بستن (✕) ابتدا یک **شمارش معکوس چندثانیه‌ای** نشان می‌دهد و سپس فعال می‌شود. در طول نمایش، دکمهٔ سخت‌افزاری Back غیرفعال است.
 
 > **دو نکتهٔ مهم دربارهٔ ترتیب رویدادها:**
 > - **کلیک، آگهی را می‌بندد.** پس از `OnAdClicked` همیشه `OnAdDismissed` هم می‌آید؛ پس اگر بازی را در `OnAdShown` متوقف می‌کنید، ادامهٔ آن در `OnAdDismissed` برای هر دو مسیر (بستن دستی و کلیک) درست کار می‌کند.
 > - **اگر تصویر آگهی پس از باز شدن رندر نشود**، آگهی بسته می‌شود و فقط `OnAdFailedToShow` با کد `ASSET_LOAD_FAILED` صادر می‌شود — در این حالت `OnAdDismissed` نمی‌آید. بنابراین اگر بازی را متوقف کرده‌اید، حتماً در `OnAdFailedToShow` هم آن را از سرگیری کنید (نمونه‌کد همین کار را می‌کند).
+
+---
+
+## گام ۷ — آگهی ویدیویی، صدا و جایزه
+
+آگهی هر درخواست ممکن است تصویری باشد یا ویدیویی. کد شما برای هر دو یکسان است: همان `RequestAd` و همان `Show`. تفاوت فقط در دو چیز است — **صدا** و **جایزه**.
+
+### ۷-۱) کنترل صدای ویدیو
+
+بیشتر بازی‌ها خودشان یک تنظیم صدا دارند و بد است که آگهی ویدیویی این تنظیم را نادیده بگیرد. دو پراپرتی روی کلاس `MagnetAd` این کار را انجام می‌دهند:
+
+<div dir="ltr">
+
+```csharp
+MagnetAd.VideoVolume = 0.5f;   // عددی بین 0f (بی‌صدا) و 1f (بلندترین)، پیش‌فرض 1f
+MagnetAd.VideoMuted  = true;   // بی‌صدا کردن بدون از دست دادن مقدار VideoVolume
+```
+
+</div>
+
+- هر دو را می‌توانید **قبل از** `Initialize` تنظیم کنید تا همان اولین ویدیو با صدای درست شروع شود، یا **هر زمان بعد از آن** — حتی وقتی ویدیو روی صفحه در حال پخش است؛ تغییر بلافاصله اعمال می‌شود.
+- ‏`VideoMuted` مقدار `VideoVolume` را پاک نمی‌کند. وقتی دوباره `false` شود، صدا به همان سطح قبلی برمی‌گردد. برای دکمهٔ بی‌صدای بازی، همین `VideoMuted` گزینهٔ درست است.
+- مقادیر خارج از بازهٔ `0f..1f` به‌طور خودکار به همان بازه محدود می‌شوند.
+
+### ۷-۲) تشخیص آگهی جایزه‌دار
+
+نوع هر جایگاه را خودتان هنگام ساختن آن در پنل ناشر انتخاب کرده‌اید، پس از قبل می‌دانید شناسه‌ای که در کد گذاشته‌اید مربوط به جایگاه جایزه‌دار (Rewarded) است یا تمام‌صفحهٔ ساده (Interstitial). ساده‌ترین کار این است که بر همان اساس کد بنویسید: برای جایگاه جایزه‌دار هندلر جایزه بگذارید و برای جایگاه ساده لازم نیست.
+
+اگر لازم شد در زمان اجرا هم مطمئن شوید، پس از `OnAdLoaded` مقدار `PlacementType` همین را به شما می‌گوید:
+
+<div dir="ltr">
+
+```csharp
+_interstitial.OnAdLoaded += () =>
+{
+    if (_interstitial.PlacementType == PlacementType.REWARDED)
+        ShowRewardPromiseDialog();   // «این ویدیو را کامل ببین و ۵۰ سکه بگیر»
+};
+```
+
+</div>
+
+مقدار `PlacementType` تا قبل از بارگذاری آگهی `UNKNOWN` است و پس از آن یکی از `INTERSTITIAL` یا `REWARDED`.
+
+### ۷-۳) دریافت جایزه
+
+وقتی کاربر ویدیو را **کامل** ببیند، رویداد `OnRewarded` روی همان آبجکت آگهی صادر می‌شود:
+
+<div dir="ltr">
+
+```csharp
+_interstitial.OnRewarded += () => GrantCoins(50);
+```
+
+</div>
+
+> این رویداد را **هم‌زمان با بقیهٔ رویدادها** و پیش از `RequestAd` وصل کنید. اگر هندلری وصل نباشد، آن جایزه از دست می‌رود؛ SDK آن را برای بعد نگه نمی‌دارد.
+
+> جایزه در همان لحظهٔ پایان تماشا اعلام می‌شود و منتظر پاسخ سرور نمی‌ماند، تا قطعی شبکه کاربر را از جایزه‌اش محروم نکند. اگر اعطای جایزه برای شما حساس است، آن را روی سرور خودتان هم ثبت کنید.
+
+### ۷-۴) نکات نمایش ویدیو
+
+- ویدیوی جایزه‌دار معمولاً تا پایان پخش بسته نمی‌شود، تا کاربر نتواند نیمه‌کاره خارج شود و بعد جایزه بخواهد.
+- روشنایی صفحه در طول پخش به روشنایی سیستم دستگاه احترام می‌گذارد.
+- اگر پخش ویدیو گیر کند و هیچ پاسخی نیاید، SDK خودش آگهی را می‌بندد و `OnAdFailedToShow` با کد `VIDEO_TIMEOUT` صادر می‌کند تا بازی شما معطل نماند.
 
 ---
 
@@ -344,6 +417,7 @@ namespace MagnetAdSDK
     public static class MagnetAd
     {
         public const string Version;                       // package version
+        public const long DefaultInitTimeoutMs;            // 30000
         public static bool IsInitialized();
         public static string GetSDKVersion();              // "unsupported" in the Editor
         public static event Action<bool> OnInitializationComplete;
@@ -351,6 +425,11 @@ namespace MagnetAdSDK
         public static void Initialize(string appId, Action<bool> onComplete = null);
         public static void Initialize(string appId, bool debugMode,
                                       Action<bool> onComplete = null);
+        public static void Initialize(string appId, bool debugMode, long timeoutMs,
+                                      Action<bool> onComplete = null);
+
+        public static float VideoVolume { get; set; }      // 0f..1f, default 1f
+        public static bool VideoMuted { get; set; }
 
         public static void ClearCache();                   // clears the cached ads and images
         public static void Shutdown();                     // called automatically when the app quits
@@ -358,8 +437,12 @@ namespace MagnetAdSDK
 
     public sealed class InterstitialAd : IDisposable
     {
+        public const long DefaultRequestTimeoutMs;         // 30000
+
         public InterstitialAd(string placementId);         // never throws
         public string PlacementId { get; }
+        public PlacementType PlacementType { get; }        // UNKNOWN until an ad is loaded
+        public AdState State { get; }                      // IDLE / LOADING / LOADED / SHOWING / DESTROYED
         public bool IsLoaded { get; }                      // an ad is ready to show
         public bool IsLoading { get; }                     // a request is in progress
 
@@ -370,10 +453,12 @@ namespace MagnetAdSDK
         public event Action OnAdClicked;
         public event Action OnAdDismissed;
         public event Action<AdError> OnAdFailedToShow;
+        public event Action OnRewarded;                    // video ads only
 
-        public void RequestAd();   // requests and preloads an ad
-        public void Show();        // shows the loaded ad
-        public void Destroy();     // releases the ad; safe to call more than once
+        public void RequestAd();                  // requests and preloads an ad
+        public void RequestAd(long timeoutMs);    // same, with your own timeout
+        public void Show();                       // shows the loaded ad
+        public void Destroy();                    // releases the ad; safe to call more than once
     }
 
     public sealed class AdError
@@ -381,6 +466,10 @@ namespace MagnetAdSDK
         public string Code { get; }      // one of the AdErrorCode values
         public string Message { get; }
     }
+
+    public enum AdState { IDLE, LOADING, LOADED, SHOWING, DESTROYED }
+
+    public enum PlacementType { UNKNOWN, INTERSTITIAL, REWARDED }
 
     public static class AdErrorCode { /* the constants listed below */ }
 }
@@ -394,6 +483,9 @@ namespace MagnetAdSDK
 | <span dir="ltr">`RequestAd()`</span> | <span dir="rtl">غیرمسدودکننده. نتیجه همیشه از طریق `OnAdLoaded` یا `OnAdFailedToLoad` می‌آید. اگر درخواستی در جریان باشد، فراخوانی دوباره نادیده گرفته می‌شود (درخواست دوم به سرور نمی‌رود) و یک هشدار در Console چاپ می‌شود.</span> |
 | <span dir="ltr">`Show()`</span> | <span dir="rtl">آگهیِ از پیش بارگذاری‌شده را نمایش می‌دهد. اگر آگهی آماده نباشد `OnAdFailedToShow(AD_NOT_READY)` صادر می‌شود.</span> |
 | <span dir="ltr">`Destroy()`</span> | <span dir="rtl">منابع آگهی را آزاد می‌کند. پس از آن، نمونه غیرقابل استفاده است. اگر هنگام صدا زدنش آگهی روی صفحه باشد، `OnAdDismissed` هم صادر می‌شود تا بازیِ متوقف‌شده حتماً از سر گرفته شود.</span> |
+| <span dir="ltr">`MagnetAd.VideoVolume`</span> | <span dir="rtl">صدای آگهی ویدیویی، عددی بین `0f` و `1f` (پیش‌فرض `1f`). قبل از `Initialize` یا هر زمان بعد از آن — حتی وسط پخش — قابل تغییر است. مقادیر بیرون از بازه به همان بازه محدود می‌شوند.</span> |
+| <span dir="ltr">`MagnetAd.VideoMuted`</span> | <span dir="rtl">بی‌صدا کردن ویدیو بدون پاک شدن `VideoVolume`؛ با `false` شدن دوباره، صدا به همان سطح قبلی برمی‌گردد.</span> |
+| <span dir="ltr">`PlacementType`</span> | <span dir="rtl">نوع آگهیِ بارگذاری‌شده. پیش از `OnAdLoaded` برابر `UNKNOWN` است. جزئیات در [گام ۷](#گام-۷--آگهی-ویدیویی-صدا-و-جایزه).</span> |
 
 > **دربارهٔ `IsLoaded`:** یک آگهیِ منقضی‌شده به‌سرعت `false` گزارش می‌شود، پس این مقدار کهنه نمی‌ماند. هر نمایش موفق، آگهی را مصرف می‌کند و `IsLoaded` دوباره `false` می‌شود؛ برای نمایش بعدی باید `RequestAd()` بزنید. این پراپرتی را فقط از ترد اصلی بخوانید.
 
@@ -418,6 +510,10 @@ namespace MagnetAdSDK
 | <span dir="ltr">`AdErrorCode.ACTIVITY_UNAVAILABLE`</span> | <span dir="rtl">صفحهٔ برنامه در دسترس نبود و نمایش ممکن نشد.</span> |
 | <span dir="ltr">`AdErrorCode.SHOW_FAILED`</span> | <span dir="rtl">خطای نامشخص هنگام نمایش آگهی.</span> |
 | <span dir="ltr">`AdErrorCode.TIMEOUT`</span> | <span dir="rtl">دریافت آگهی خیلی طول کشید.</span> |
+| <span dir="ltr">`AdErrorCode.UNEXPECTED_AD_TYPE`</span> | <span dir="rtl">سرور نوعی از آگهی فرستاد که این نسخه از SDK نمی‌شناسد.</span> |
+| <span dir="ltr">`AdErrorCode.VIDEO_PLAYBACK_ERROR`</span> | <span dir="rtl">پخش ویدیو با خطا متوقف شد.</span> |
+| <span dir="ltr">`AdErrorCode.VIDEO_SERVER_DIED`</span> | <span dir="rtl">پخش‌کنندهٔ ویدیوی سیستم‌عامل از کار افتاد (معمولاً مشکل خود دستگاه است).</span> |
+| <span dir="ltr">`AdErrorCode.VIDEO_TIMEOUT`</span> | <span dir="rtl">ویدیو شروع به پخش نکرد یا وسط کار گیر کرد و هیچ پاسخی نداد؛ SDK آگهی را بست.</span> |
 | <span dir="ltr">`AdErrorCode.UNKNOWN`</span> | <span dir="rtl">سایر خطاها.</span> |
 
 ---
@@ -446,11 +542,12 @@ namespace MagnetAdSDK
 ## محدودیت‌ها
 
 - فقط **بیلد اندروید** (iOS و Unity Editor پشتیبانی نمی‌شوند؛ در Editor و سایر پلتفرم‌ها همهٔ فراخوانی‌ها با هشدار، بی‌اثر و ناموفق برمی‌گردند).
-- فقط آگهی **Interstitial**.
-- بدون Banner/Native/Rewarded در این نسخه.
+- فقط آگهی **Interstitial** (تصویری و ویدیویی جایزه‌دار).
+- بدون Banner و Native در این نسخه.
+- کد شما نمی‌تواند تعیین کند محتوای آگهی تصویر باشد یا ویدیو.
 
 ---
 
-*نسخهٔ پکیج: `1.0.0` — در زمان اجرا از ثابت `MagnetAd.Version` قابل خواندن است.*
+*نسخهٔ پکیج: `1.1.0` — در زمان اجرا از ثابت `MagnetAd.Version` قابل خواندن است.*
 
 </div>
